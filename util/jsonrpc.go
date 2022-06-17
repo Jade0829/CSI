@@ -201,15 +201,13 @@ func (client *rpcClient) call(endpoint string, args, result interface{}) error {
 
 	id := atomic.AddInt32(&client.rpcID, 1)
 	request := rpcRequest{
-		ID:     id,
-		Method: endpoint,
+		ID:       id,
+		Endpoint: endpoint,
 	}
 
 	var data []byte
-	var err error
-
 	if args == nil {
-		data, err = json.Marshal(request)
+		data, err := json.Marshal(request)
 	} else {
 		requestWithParams := struct {
 			rpcRequest
@@ -218,21 +216,21 @@ func (client *rpcClient) call(endpoint string, args, result interface{}) error {
 			request,
 			args,
 		}
-		data, err = json.Marshal(requestWithParams)
+		data, err := json.Marshal(requestWithParams)
 	}
 
 	url := client.rpcURL + endpoint
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
 	if err != nil {
-		return fmt.Errorf("%s: %s", method, err)
+		return fmt.Errorf("%s: %s", endpoint, err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("%s: %s", method, err)
+		return fmt.Errorf("%s: %s", endpoint, err)
 	}
 
 	defer resp.Body.Close()
@@ -245,7 +243,7 @@ func (client *rpcClient) call(endpoint string, args, result interface{}) error {
 
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
-		return fmt.Errorf("%s: %s", method, err)
+		return fmt.Errorf("%s: %s", endpoint, err)
 	}
 
 	return nil
