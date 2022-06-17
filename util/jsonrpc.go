@@ -193,18 +193,16 @@ func (client *rpcClient) snapshot(lvolName, snapShotName string) (string, error)
 }
 
 // low level rpc request/response handling
-func (client *rpcClient) call(method string, args, result interface{}) error {
+func (client *rpcClient) call(endpoint string, args, result interface{}) error {
 	type rpcRequest struct {
-		Ver    string `json:"jsonrpc"`
-		ID     int32  `json:"id"`
-		Method string `json:"method"`
+		ID       int32
+		Endpoint string
 	}
 
 	id := atomic.AddInt32(&client.rpcID, 1)
 	request := rpcRequest{
-		Ver:    "2.0",
 		ID:     id,
-		Method: method,
+		Method: endpoint,
 	}
 
 	var data []byte
@@ -222,16 +220,14 @@ func (client *rpcClient) call(method string, args, result interface{}) error {
 		}
 		data, err = json.Marshal(requestWithParams)
 	}
+
+	url := client.rpcURL + endpoint
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("%s: %s", method, err)
 	}
 
-	req, err := http.NewRequest("POST", client.rpcURL, bytes.NewReader(data))
-	if err != nil {
-		return fmt.Errorf("%s: %s", method, err)
-	}
-
-	req.SetBasicAuth(client.rpcUser, client.rpcPass)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := client.httpClient.Do(req)
@@ -241,16 +237,7 @@ func (client *rpcClient) call(method string, args, result interface{}) error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		return fmt.Errorf("%s: HTTP error code: %d", method, resp.StatusCode)
-	}
-
 	response := struct {
-		ID    int32 `json:"id"`
-		Error struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
 		Result interface{} `json:"result"`
 	}{
 		Result: result,
@@ -259,12 +246,6 @@ func (client *rpcClient) call(method string, args, result interface{}) error {
 	err = json.NewDecoder(resp.Body).Decode(&response)
 	if err != nil {
 		return fmt.Errorf("%s: %s", method, err)
-	}
-	if response.ID != id {
-		return fmt.Errorf("%s: json response ID mismatch", method)
-	}
-	if response.Error.Code != 0 {
-		return fmt.Errorf("%s: json response error: %s", method, response.Error.Message)
 	}
 
 	return nil
