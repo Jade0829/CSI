@@ -129,7 +129,7 @@ func (client *rpcClient) info() string {
 func (client *rpcClient) lvStores() ([]LvStore, error) {
 	var result []struct {
 		Name string `json:"name"`
-		size int64
+		Size int64
 	}
 
 	err := client.call("liistNVMeOF", nil, &result)
