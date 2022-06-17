@@ -102,6 +102,8 @@ func (node *nodeNVMf) CreateVolume(lvsName string, sizeMiB int64) (string, error
 		return "", fmt.Errorf("volume ID already exists: %s", lvolID)
 	}
 	node.lvols[lvolID] = &lvolNVMf{nsID: invalidNSID}
+	node.lovls[lvolID].model = lovlID
+	node.lvols[lvolID].nqn = "nqn.gluesys.csi:" + lvolID
 
 	klog.V(5).Infof("volume created: %s", lvolID)
 	return lvolID, nil
