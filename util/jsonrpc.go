@@ -85,9 +85,8 @@ type SpdkNode interface {
 
 // logical volume store
 type LvStore struct {
-	Name         string
-	TotalSizeMiB int64
-	FreeSizeMiB  int64
+	Name string
+	Size int64
 }
 
 // errors deserve special care
@@ -133,7 +132,7 @@ func (client *rpcClient) lvStores() ([]LvStore, error) {
 		size int64
 	}
 
-	err := client, call("liistNVMeOF", nil, &result)
+	err := client.call("liistNVMeOF", nil, &result)
 	if err != nil {
 		return nil, err
 	}
