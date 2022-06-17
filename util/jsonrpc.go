@@ -206,8 +206,10 @@ func (client *rpcClient) call(endpoint string, args, result interface{}) error {
 	}
 
 	var data []byte
+	var err error
+
 	if args == nil {
-		data, err := json.Marshal(request)
+		data, err = json.Marshal(request)
 	} else {
 		requestWithParams := struct {
 			rpcRequest
@@ -216,7 +218,7 @@ func (client *rpcClient) call(endpoint string, args, result interface{}) error {
 			request,
 			args,
 		}
-		data, err := json.Marshal(requestWithParams)
+		data, err = json.Marshal(requestWithParams)
 	}
 
 	url := client.rpcURL + endpoint
