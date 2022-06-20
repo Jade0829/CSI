@@ -62,7 +62,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 
 		volume, exists := ns.volumes[volumeID]
 		if !exists {
-			initiator, err := util.NewCsiInitiator(req.GetVolumeContext())
+			initiator, err := util.NewCSIInitiator(req.GetVolumeContext())
 			if err != nil {
 				return nil, err
 			}

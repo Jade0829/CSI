@@ -22,7 +22,6 @@ import (
 	"sync"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	"github.com/golang/protobuf/ptypes"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog"
@@ -186,84 +185,6 @@ func (cs *controllerServer) ValidateVolumeCapabilities(ctx context.Context, req 
 	}, nil
 }
 
-func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	lvolID := req.GetSourceVolumeId()
-	snapshotName := req.GetName()
-
-	cs.mtx.Lock()
-	volume, exists := cs.volumes[lvolID]
-	cs.mtx.Unlock()
-	if !exists {
-		klog.Warningf("volume does not exist: %s", lvolID)
-		return &csi.CreateSnapshotResponse{}, status.Error(codes.Internal, "snapshot source volume does not exist")
-	}
-
-	cs.mtxSnapshot.RLock()
-	if exSnap, ok := cs.snapshotsIdem[snapshotName]; ok {
-		cs.mtxSnapshot.RUnlock()
-		if exSnap.SourceVolumeId == lvolID {
-			return &csi.CreateSnapshotResponse{
-				Snapshot: &exSnap,
-			}, nil
-		}
-		return nil, status.Errorf(codes.AlreadyExists, "snapshot with the same name: %s but with different SourceVolumeId already exists", snapshotName)
-	}
-	cs.mtxSnapshot.RUnlock()
-
-	snapshotID, err := volume.csiNode.CreateSnapshot(lvolID, snapshotName)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	creationTime := ptypes.TimestampNow()
-	snapshotData := csi.Snapshot{
-		SizeBytes:      volume.csiVolume.GetCapacityBytes(),
-		SnapshotId:     snapshotID,
-		SourceVolumeId: lvolID,
-		CreationTime:   creationTime,
-		ReadyToUse:     true,
-	}
-
-	cs.mtxSnapshot.Lock()
-	cs.snapshotsIdem[snapshotID] = snapshotData
-	cs.mtxSnapshot.Unlock()
-
-	return &csi.CreateSnapshotResponse{
-		Snapshot: &snapshotData,
-	}, nil
-}
-
-func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	snapshotID := req.SnapshotId
-	cs.mtxSnapshot.RLock()
-	exSnap, exists := cs.snapshotsIdem[snapshotID]
-	cs.mtxSnapshot.RUnlock()
-	if !exists {
-		klog.Warningf("snapshot does not exist: %s", snapshotID)
-		return &csi.DeleteSnapshotResponse{}, status.Error(codes.Internal, "snapshot does not exist")
-	}
-
-	sourceVolumeID := exSnap.SourceVolumeId
-	cs.mtx.Lock()
-	volume, exists := cs.volumes[sourceVolumeID]
-	cs.mtx.Unlock()
-	if !exists {
-		klog.Warningf("sourceVolume does not exist: %s", sourceVolumeID)
-		return &csi.DeleteSnapshotResponse{}, status.Error(codes.Internal, "snapshot source volume does not exist")
-	}
-
-	err := volume.csiNode.DeleteVolume(snapshotID)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	cs.mtxSnapshot.Lock()
-	delete(cs.snapshotsIdem, snapshotID)
-	cs.mtxSnapshot.Unlock()
-
-	return &csi.DeleteSnapshotResponse{}, nil
-}
-
 func (cs *controllerServer) createVolume(req *csi.CreateVolumeRequest) (*volume, error) {
 	size := req.GetCapacityRange().GetRequiredBytes()
 	if size == 0 {
@@ -328,7 +249,7 @@ func (cs *controllerServer) schedule(sizeMiB int64) (csiNode util.CSINode, vgNam
 			continue
 		}
 		for i := range vgList {
-			vg := i[i]
+			vg := vgList[i]
 			if vg.FreeSizeMiB > sizeMiB {
 				return csiNode, vg.Name, nil
 			}
@@ -415,7 +336,7 @@ func newControllerServer(d *csicommon.CSIDriver) (*controllerServer, error) {
 			klog.Errorf("failed to find secret for spdk node %s", node.Name)
 		}
 	}
-	if len(server.spdkNodes) == 0 {
+	if len(server.csiNodes) == 0 {
 		return nil, fmt.Errorf("no valid spdk node found")
 	}
 
