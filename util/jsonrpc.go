@@ -72,21 +72,18 @@ import (
 // an already deleted volume. The baseline is there should be no code crash or
 // data corruption under these conditions. Implementation may try to detect and
 // report errors if possible.
-type SpdkNode interface {
-	Info() string
-	LvStores() ([]LvStore, error)
+type CSINode interface {
+	VgList() ([]VG, error)
 	VolumeInfo(lvolID string) (map[string]string, error)
 	CreateVolume(lvsName string, sizeMiB int64) (string, error)
 	DeleteVolume(lvolID string) error
-	PublishVolume(lvolID string) error
-	UnpublishVolume(lvolID string) error
-	CreateSnapshot(lvolName, snapshotName string) (string, error)
 }
 
 // logical volume store
-type LvStore struct {
-	Name string
-	Size int64
+type VG struct {
+	Name         string
+	TotalSizeMiB int64
+	FreeSizeMiB  int64
 }
 
 // errors deserve special care
@@ -111,7 +108,7 @@ type rpcClient struct {
 	rpcID      int32 // json request message ID, auto incremented
 }
 
-func NewSpdkNode(rpcURL, rpcUser, rpcPass, targetType, targetAddr string) (SpdkNode, error) {
+func NewCSINode(rpcURL, rpcUser, rpcPass, targetType, targetAddr string) (CSINode, error) {
 	client := rpcClient{
 		rpcURL:     rpcURL,
 		rpcUser:    rpcUser,
@@ -126,13 +123,14 @@ func (client *rpcClient) info() string {
 	return client.rpcURL
 }
 
-func (client *rpcClient) lvStores() ([]LvStore, error) {
+func (client *rpcClient) vgList() ([]VG, error) {
 	var result []struct {
-		Name string `json:"name"`
-		Size int64
+		Name         string `json:"name"`
+		TotalSizeMiB int64
+		FreeSizeMiB  int64
 	}
 
-	err := client.call("liistNVMeOF", nil, &result)
+	err := client.call("getVGList", nil, &result)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +139,8 @@ func (client *rpcClient) lvStores() ([]LvStore, error) {
 	for i := range result {
 		r := &result[i]
 		lvs[i].Name = r.Name
-		lvs[i].Size = r.Size * 1024 * 1024
+		lvs[i].TotalSizeMiB = r.TotalSizeMiB
+		lvs[i].FreeSizeMiB = r.FreeSizeMiB
 	}
 
 	return lvs, nil
@@ -154,7 +153,7 @@ func (client *rpcClient) createVolume(lvsName string, sizeMiB int64) (string, er
 		LvsName  string `json:"lvs_name"`
 	}{
 		LvolName: uuid.New().String(),
-		Size:     sizeMiB * 1024 * 1024,
+		Size:     sizeMiB,
 		LvsName:  lvsName,
 	}
 
@@ -175,21 +174,6 @@ func (client *rpcClient) deleteVolume(lvolID string) error {
 	err := client.call("deleteNVMeOF", &params, nil)
 
 	return err
-}
-
-func (client *rpcClient) snapshot(lvolName, snapShotName string) (string, error) {
-	params := struct {
-		LvolName     string `json:"lvol_name"`
-		SnapShotName string `json:"snapshot_name"`
-	}{
-		LvolName:     lvolName,
-		SnapShotName: snapShotName,
-	}
-
-	var snapshotID string
-	err := client.call("bdev_lvol_snapshot", &params, &snapshotID)
-
-	return snapshotID, err
 }
 
 // low level rpc request/response handling
@@ -249,15 +233,4 @@ func (client *rpcClient) call(endpoint string, args, result interface{}) error {
 	}
 
 	return nil
-}
-
-func errorMatches(errFull, errJSON error) bool {
-	if errFull == nil {
-		return false
-	}
-	strFull := strings.ToLower(errFull.Error())
-	strJSON := strings.ToLower(errJSON.Error())
-	strJSON = strings.TrimPrefix(strJSON, "json:")
-	strJSON = strings.TrimSpace(strJSON)
-	return strings.Contains(strFull, strJSON)
 }

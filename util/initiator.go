@@ -35,12 +35,12 @@ import (
 //
 // - Caller(node service) should serialize calls to same initiator
 // - Implementation should be idempotent to duplicated requests
-type SpdkCsiInitiator interface {
+type CsiInitiator interface {
 	Connect() (string, error)
 	Disconnect() error
 }
 
-func NewSpdkCsiInitiator(volumeContext map[string]string) (SpdkCsiInitiator, error) {
+func NewCsiInitiator(volumeContext map[string]string) (SpdkCsiInitiator, error) {
 	targetType := strings.ToLower(volumeContext["targetType"])
 	switch targetType {
 	case "rdma", "tcp":
