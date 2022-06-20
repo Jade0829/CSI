@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -135,7 +134,7 @@ func (client *rpcClient) vgList() ([]VG, error) {
 		return nil, err
 	}
 
-	lvs := make([]LvStore, len(result))
+	lvs := make([]VG, len(result))
 	for i := range result {
 		r := &result[i]
 		lvs[i].Name = r.Name

@@ -18,9 +18,7 @@ package util
 
 import (
 	"fmt"
-	"strings"
 	"sync"
-	"sync/atomic"
 
 	"k8s.io/klog"
 )
