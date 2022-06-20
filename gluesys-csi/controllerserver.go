@@ -210,7 +210,7 @@ func (cs *controllerServer) CreateSnapshot(ctx context.Context, req *csi.CreateS
 	}
 	cs.mtxSnapshot.RUnlock()
 
-	snapshotID, err := volume.spdkNode.CreateSnapshot(lvolID, snapshotName)
+	snapshotID, err := volume.csiNode.CreateSnapshot(lvolID, snapshotName)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -252,7 +252,7 @@ func (cs *controllerServer) DeleteSnapshot(ctx context.Context, req *csi.DeleteS
 		return &csi.DeleteSnapshotResponse{}, status.Error(codes.Internal, "snapshot source volume does not exist")
 	}
 
-	err := volume.spdkNode.DeleteVolume(snapshotID)
+	err := volume.csiNode.DeleteVolume(snapshotID)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
@@ -286,7 +286,7 @@ func (cs *controllerServer) createVolume(req *csi.CreateVolumeRequest) (*volume,
 
 	return &volume{
 		name:    req.Name,
-		csiNode: spdkNode,
+		csiNode: csiNode,
 		csiVolume: csi.Volume{
 			VolumeId:      volumeID,
 			CapacityBytes: sizeMiB * 1024 * 1024,
@@ -316,20 +316,19 @@ func deleteVolume(volume *volume) error {
 }
 
 func unpublishVolume(volume *volume) error {
-	return volume.csiNode.UnpublishVolume(volume.csiVolume.GetVolumeId())
+	return nil
 }
 
 // simplest volume scheduler: find first node:lvstore with enough free space
 func (cs *controllerServer) schedule(sizeMiB int64) (csiNode util.CSINode, vgName string, err error) {
 	for _, csiNode := range cs.csiNodes {
-		vgList, err = csiNode.VgList()
+		vgList, err := csiNode.VgList()
 		if err != nil {
 			klog.Errorf("failed to get VG List from node")
 			continue
 		}
 		for i := range vgList {
-		vg:
-			i[i]
+			vg := i[i]
 			if vg.FreeSizeMiB > sizeMiB {
 				return csiNode, vg.Name, nil
 			}

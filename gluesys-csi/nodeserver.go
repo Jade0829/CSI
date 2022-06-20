@@ -41,7 +41,7 @@ type nodeServer struct {
 }
 
 type nodeVolume struct {
-	initiator   util.CsiInitiator
+	initiator   util.CSIInitiator
 	stagingPath string
 	tryLock     util.TryLock
 }
