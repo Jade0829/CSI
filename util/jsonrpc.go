@@ -145,15 +145,15 @@ func (client *rpcClient) vgList() ([]VG, error) {
 	return lvs, nil
 }
 
-func (client *rpcClient) createVolume(lvsName string, sizeMiB int64) (string, error) {
+func (client *rpcClient) createVolume(vgName string, sizeMiB int64) (string, error) {
 	params := struct {
 		LvolName string `json:"lvol_name"`
 		Size     int64  `json:"size"`
-		LvsName  string `json:"lvs_name"`
+		VgName   string `json:"vg_name"`
 	}{
 		LvolName: uuid.New().String(),
 		Size:     sizeMiB,
-		LvsName:  lvsName,
+		VgName:   vgName,
 	}
 
 	var lvolID string

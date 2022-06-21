@@ -194,13 +194,13 @@ func (cs *controllerServer) createVolume(req *csi.CreateVolumeRequest) (*volume,
 	sizeMiB := util.ToMiB(size)
 
 	// schedule suitable node:lvstore
-	csiNode, lvstore, err := cs.schedule(sizeMiB)
+	csiNode, vgName, err := cs.schedule(sizeMiB)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: re-schedule on ErrJSONNoSpaceLeft per optimistic concurrency control
-	volumeID, err := csiNode.CreateVolume(lvstore, sizeMiB)
+	volumeID, err := csiNode.CreateVolume(vgName, sizeMiB)
 	if err != nil {
 		return nil, err
 	}
