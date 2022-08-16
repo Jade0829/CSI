@@ -64,8 +64,8 @@ func (node *nodeNVMf) Info() string {
 	return node.client.info()
 }
 
-func (node *nodeNVMf) VgList() ([]VG, error) {
-	return node.client.vgList()
+func (node *nodeNVMf) LvList() ([]LV, error) {
+	return node.client.lvList()
 }
 
 // VolumeInfo returns a string:string map containing information necessary

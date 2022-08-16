@@ -194,13 +194,13 @@ func (cs *controllerServer) createVolume(req *csi.CreateVolumeRequest) (*volume,
 	sizeMiB := util.ToMiB(size)
 
 	// schedule suitable node:lvstore
-	csiNode, vgName, err := cs.schedule(sizeMiB)
+	csiNode, lvName, err := cs.schedule(sizeMiB)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: re-schedule on ErrJSONNoSpaceLeft per optimistic concurrency control
-	volumeID, err := csiNode.CreateVolume(vgName, sizeMiB)
+	volumeID, err := csiNode.CreateVolume(lvName, sizeMiB)
 	if err != nil {
 		return nil, err
 	}
@@ -243,15 +243,15 @@ func unpublishVolume(volume *volume) error {
 // simplest volume scheduler: find first node:lvstore with enough free space
 func (cs *controllerServer) schedule(sizeMiB int64) (csiNode util.CSINode, vgName string, err error) {
 	for _, csiNode := range cs.csiNodes {
-		vgList, err := csiNode.VgList()
+		lvList, err := csiNode.LvList()
 		if err != nil {
 			klog.Errorf("failed to get VG List from node")
 			continue
 		}
-		for i := range vgList {
-			vg := vgList[i]
-			if vg.FreeSizeMiB > sizeMiB {
-				return csiNode, vg.Name, nil
+		for i := range lvList {
+			lv := lvList[i]
+			if lv.FreeSizeMiB > sizeMiB {
+				return csiNode, lv.Name, nil
 			}
 		}
 		// retrieve lastest lvstore info from spdk node

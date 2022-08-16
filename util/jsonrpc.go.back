@@ -72,14 +72,14 @@ import (
 // data corruption under these conditions. Implementation may try to detect and
 // report errors if possible.
 type CSINode interface {
-	LvList() ([]LV, error)
+	VgList() ([]VG, error)
 	VolumeInfo(lvolID string) (map[string]string, error)
 	CreateVolume(lvsName string, sizeMiB int64) (string, error)
 	DeleteVolume(lvolID string) error
 }
 
 // logical volume store
-type LV struct {
+type VG struct {
 	Name         string
 	TotalSizeMiB int64
 	FreeSizeMiB  int64
@@ -122,19 +122,19 @@ func (client *rpcClient) info() string {
 	return client.rpcURL
 }
 
-func (client *rpcClient) lvList() ([]LV, error) {
+func (client *rpcClient) vgList() ([]VG, error) {
 	var result []struct {
 		Name         string `json:"name"`
 		TotalSizeMiB int64
 		FreeSizeMiB  int64
 	}
 
-	err := client.call("getVolume", nil, &result)
+	err := client.call("getVGList", nil, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	lvs := make([]LV, len(result))
+	lvs := make([]VG, len(result))
 	for i := range result {
 		r := &result[i]
 		lvs[i].Name = r.Name
@@ -145,20 +145,20 @@ func (client *rpcClient) lvList() ([]LV, error) {
 	return lvs, nil
 }
 
-func (client *rpcClient) createVolume(lvName string, sizeMiB int64) (string, error) {
+func (client *rpcClient) createVolume(vgName string, sizeMiB int64) (string, error) {
 	params := struct {
 		LvolName string `json:"lvol_name"`
 		Size     int64  `json:"size"`
-		LvName   string `json:"lv_name"`
+		VgName   string `json:"vg_name"`
 	}{
 		LvolName: uuid.New().String(),
 		Size:     sizeMiB,
-		LvName:   lvName,
+		VgName:   vgName,
 	}
 
 	var lvolID string
 
-	err := client.call("createTarget", &params, &lvolID)
+	err := client.call("createNVMeOF", &params, &lvolID)
 
 	return lvolID, err
 }
@@ -170,7 +170,7 @@ func (client *rpcClient) deleteVolume(lvolID string) error {
 		Name: lvolID,
 	}
 
-	err := client.call("deleteTarget", &params, nil)
+	err := client.call("deleteNVMeOF", &params, nil)
 
 	return err
 }
