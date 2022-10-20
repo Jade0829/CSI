@@ -51,6 +51,7 @@ func NewCSIInitiator(volumeContext map[string]string) (CSIInitiator, error) {
 			targetPort: volumeContext["targetPort"],
 			nqn:        volumeContext["nqn"],
 			model:      volumeContext["model"],
+			uuid:       volumeContext["uuid"],
 		}, nil
 	case "iscsi":
 		return &initiatorISCSI{
