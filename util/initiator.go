@@ -29,9 +29,9 @@ import (
 
 // SpdkCsiInitiator defines interface for NVMeoF/iSCSI initiator
 //
-// - Connect initiates target connection and returns local block device filename
-//   e.g., /dev/disk/by-id/nvme-SPDK_Controller1_SPDK00000000000001
-// - Disconnect terminates target connection
+//   - Connect initiates target connection and returns local block device filename
+//     e.g., /dev/disk/by-id/nvme-SPDK_Controller1_SPDK00000000000001
+//   - Disconnect terminates target connection
 //
 // - Caller(node service) should serialize calls to same initiator
 // - Implementation should be idempotent to duplicated requests
@@ -70,6 +70,7 @@ type initiatorNVMf struct {
 	targetPort string
 	nqn        string
 	model      string
+	uuid       string
 }
 
 func (nvmf *initiatorNVMf) Connect() (string, error) {
@@ -82,7 +83,7 @@ func (nvmf *initiatorNVMf) Connect() (string, error) {
 		klog.Errorf("command %v failed: %s", cmdLine, err)
 	}
 
-	deviceGlob := fmt.Sprintf("/dev/disk/by-id/*%s*", nvmf.model)
+	deviceGlob := fmt.Sprintf("/dev/disk/by-id/*%s*", nvmf.uuid)
 	devicePath, err := waitForDeviceReady(deviceGlob, 20)
 	if err != nil {
 		return "", err
@@ -124,7 +125,7 @@ func (iscsi *initiatorISCSI) Connect() (string, error) {
 		klog.Errorf("command %v failed: %s", cmdLine, err)
 	}
 
-	deviceGlob := fmt.Sprintf("/dev/disk/by-path/*%s*", iscsi.iqn)
+	deviceGlob := fmt.Sprintf("/dev/disk/by-path/nvme-uuid.%s", iscsi.iqn)
 	devicePath, err := waitForDeviceReady(deviceGlob, 20)
 	if err != nil {
 		return "", err
@@ -141,7 +142,7 @@ func (iscsi *initiatorISCSI) Disconnect() error {
 		klog.Errorf("command %v failed: %s", cmdLine, err)
 	}
 
-	deviceGlob := fmt.Sprintf("/dev/disk/by-path/*%s*", iscsi.iqn)
+	deviceGlob := fmt.Sprintf("/dev/disk/by-path/nvme-uuid.%s", iscsi.iqn)
 	return waitForDeviceGone(deviceGlob, 20)
 }
 

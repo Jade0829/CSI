@@ -41,6 +41,7 @@ type lvolNVMf struct {
 	nsID  int
 	nqn   string
 	model string
+	uuid  string
 	port  int
 }
 
@@ -48,6 +49,7 @@ func (lvol *lvolNVMf) reset() {
 	lvol.nsID = invalidNSID
 	lvol.nqn = ""
 	lvol.model = ""
+	lvol.uuid = ""
 }
 
 func newNVMf(client *rpcClient, targetType, targetAddr string) *nodeNVMf {
@@ -85,12 +87,13 @@ func (node *nodeNVMf) VolumeInfo(lvolID string) (map[string]string, error) {
 		"targetPort": node.targetPort,
 		"nqn":        lvol.nqn,
 		"model":      lvol.model,
+		"uuid":       lvol.uuid,
 	}, nil
 }
 
 // CreateVolume creates a logical volume and returns volume ID
 func (node *nodeNVMf) CreateVolume(lvsName string, sizeMiB int64) (string, error) {
-	lvolID, err := node.client.createVolume(lvsName, sizeMiB)
+	lvolID, uuid, err := node.client.createVolume(lvsName, sizeMiB)
 	if err != nil {
 		return "", err
 	}
@@ -102,9 +105,11 @@ func (node *nodeNVMf) CreateVolume(lvsName string, sizeMiB int64) (string, error
 	if exists {
 		return "", fmt.Errorf("volume ID already exists: %s", lvolID)
 	}
+
 	node.lvols[lvolID] = &lvolNVMf{nsID: invalidNSID}
 	node.lvols[lvolID].model = lvolID
 	node.lvols[lvolID].nqn = "nqn.gluesys.csi:" + lvolID
+	node.lvols[lvolID].uuid = uuid
 
 	klog.V(5).Infof("volume created: %s", lvolID)
 	return lvolID, nil

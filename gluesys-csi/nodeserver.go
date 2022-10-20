@@ -86,6 +86,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 			return &csi.NodeStageVolumeResponse{}, nil
 		}
 		devicePath, err := volume.initiator.Connect() // idempotent
+		klog.Infof("devicePath : %s", devicePath)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
