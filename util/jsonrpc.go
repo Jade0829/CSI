@@ -165,9 +165,10 @@ func (client *rpcClient) createVolume(lvName string, sizeMiB int64) (string, str
     }
 
 	err := client.call("createTarget", &params, &result)
+    r := &result
 
-	lvolID := result.lvolID
-	uuid := result.uuid
+	lvolID := r.lvolID
+	uuid := r.uuid
 
 	return lvolID, uuid, err
 }
