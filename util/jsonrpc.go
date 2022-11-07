@@ -156,19 +156,17 @@ func (client *rpcClient) createVolume(lvName string, sizeMiB int64) (string, str
 		LvName:   lvName,
 	}
 
-	result := struct {
-        lvolID string
-        uuid   string
-    }{
-        lvolID: "",
-        uuid: "",
+	var result struct{
+        LvolID string
+        UuId   string
     }
 
 	err := client.call("createTarget", &params, &result)
-    r := &result
 
-	lvolID := r.lvolID
-	uuid := r.uuid
+	r := &result
+
+	lvolID := r.LvolID
+	uuid := r.UuId
 
 	return lvolID, uuid, err
 }
