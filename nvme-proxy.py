@@ -37,9 +37,9 @@ def getLVInfo():
 		size,unit = float(data[3][:-1]),data[3][-1]
 
 		if unit == "g":
-			size = size*1024
-		elif unit == "t":
 			size = size*1024*1024
+		elif unit == "t":
+			size = size*1024*1024*1024
 
 		lv['size'] = int(size)
 		
@@ -49,8 +49,8 @@ def getLVInfo():
 	return {"Result":lvList}
 
 def getVGList():
-	result = subprocess.getstatusoutput("vgs")
-	result, err = result[1].split("\n")[1:],result[0]
+	result = subprocess.getstatusoutput("vgs | grep nvme")
+	result, err = result[1].split("\n"),result[0]
 	if err!=0:
 		return {"Result":err[1]}
 	
@@ -62,7 +62,7 @@ def getVGList():
 		vg['Name'] = data[0]
 
 		totalUnit, freeUnit = data[-2][-1], data[-1][-1]
-		totalSize, freeSize = float(data[-2][1:-1]),float(data[-1][1:-1])
+		totalSize, freeSize = float(data[-2][:-1]),float(data[-1][1:-1])
 
 		if totalUnit == "g":
 			totalSize *= 1024
@@ -121,7 +121,7 @@ def CreateFuse(size,lvol_name,path):
 	return 0, fileName
 
 def CreateLV(size,model,vgname):
-	cmd = "lvcreate -n %s -L %s %s"%(model,size,vgname)
+	cmd = "lvcreate -i 3 -n %s -L %s %s"%(model,size,vgname)
 	err, msg = subprocess.getstatusoutput(cmd)
 
 	if err != 0:
@@ -132,7 +132,7 @@ def CreateLV(size,model,vgname):
 	return 0, device
 
 def GetNVMeTargetInfo():
-	defaultPath = "/csi/nvmeTargetInfo.json"
+	defaultPath = "/csi-proxy/nvmeTargetInfo.json"
 	nvmeInfo = {}
 
 	if not os.path.isfile(defaultPath):
@@ -162,17 +162,17 @@ def CreateSubsystem(model,sn,nqn,size,device):
 	if os.path.isfile(defaultPath+nqn+"/"+fName[0]):
 		err = subprocess.getstatusoutput("echo %s > %s"%(model,defaultPath+nqn+"/"+fName[0]))
 		if err[0]!=0:
-			return 1,err[1],nqn,device
+			return 1,err[1],nqn,device,uuid
     
 	if os.path.isfile(defaultPath+nqn+"/"+fName[1]):
 		err = subprocess.getstatusoutput("echo %s > %s"%(sn,defaultPath+nqn+"/"+fName[1]))
 		if err[0]!=0:
-			return 1,err[1],nqn,device
+			return 1,err[1],nqn,device,uuid
 	
 	if os.path.isfile(defaultPath+nqn+"/"+fName[2]):
 		err = subprocess.getstatusoutput("echo 1 > %s"%defaultPath+nqn+"/"+fName[2])
 		if err[0]!=0:
-			return 1,err[1],nqn,device
+			return 1,err[1],nqn,device,uuid
 	
 	nsPath = defaultPath+nqn+"/namespaces/"
 	ns = len(os.listdir(nsPath))+1	
@@ -180,15 +180,15 @@ def CreateSubsystem(model,sn,nqn,size,device):
 
 	err = subprocess.getstatusoutput("mkdir %s"%(nsPath))
 	if err[0]!=0:
-		return 1,err[1],nqn,device
+		return 1,err[1],nqn,device,uuid
 	
 	err = subprocess.getstatusoutput("echo %s > %s"%(device,nsPath+"/"+fName[3]))
 	if err[0]!=0:
-		return 1,err[1],nqn,device
+		return 1,err[1],nqn,device,uuid
 
 	err = subprocess.getstatusoutput("echo 1 > %s"%(nsPath+"/"+fName[4]))
 	if err[0]!=0:
-		return 1,err[1],nqn,device
+		return 1,err[1],nqn,device,uuid
 
 	err, uuid = subprocess.getstatusoutput("cat %s"%(nsPath+"/device_uuid"))
 	if err !=0:
@@ -297,7 +297,7 @@ def create(lvolID,size,lvname):
 	if lvType == "fuse":
 		err, device = CreateFuse(size,lvolID,lvname)
 	if lvType == "lvm":
-		err, device = CreateLV(size,lvoID,lvname)
+		err, device = CreateLV(size,lvolID,lvname)
 
 	model = lvolID
 	nqn = "nqn.gluesys.csi:%s"%lvolID
@@ -375,7 +375,7 @@ if __name__ == "__main__":
 	ip = res.replace(" ","")
 	port = 4420
 	
-	lvType = "fuse"
+	lvType = "lvm"
 	app.run(host=ip,port=829)
 
 

@@ -84,7 +84,7 @@ func (nvmf *initiatorNVMf) Connect() (string, error) {
 		klog.Errorf("command %v failed: %s", cmdLine, err)
 	}
 
-	deviceGlob := fmt.Sprintf("/dev/disk/by-id/*%s*", nvmf.uuid)
+	deviceGlob := fmt.Sprintf("/dev/disk/by-id/nvme-uuid.%s*", nvmf.uuid)
 	devicePath, err := waitForDeviceReady(deviceGlob, 20)
 	if err != nil {
 		return "", err
