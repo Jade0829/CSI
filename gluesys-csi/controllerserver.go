@@ -249,7 +249,7 @@ func (cs *controllerServer) schedule(sizeMiB int64) (csiNode util.CSINode, vgNam
 			continue
 		}
 		for i := range lvList {
-			lv := lvList[i]
+			lv := &lvList[i]
 			if lv.FreeSizeMiB > sizeMiB {
 				return csiNode, lv.Name, nil
 			}
