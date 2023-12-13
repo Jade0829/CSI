@@ -157,9 +157,9 @@ func (client *rpcClient) createVolume(lvName string, sizeMiB int64) (string, str
 	}
 
 	var result struct{
-        LvolID string
-        UuId   string
-    }
+        	LvolID string `json:"LvolID"`
+        	UuId   string `json:"UuId"`
+        }
 
 	err := client.call("createTarget", &params, &result)
 
