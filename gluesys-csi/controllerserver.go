@@ -27,7 +27,7 @@ import (
 	"k8s.io/klog"
 
 	"github.com/Jade0829/CSI/util"
-	csicommon "github.com/spdk/spdk-csi/pkg/csi-common"
+	csicommon "github.com/Jade0829/CSI/csi-common"
 )
 
 var errVolumeInCreation = status.Error(codes.Internal, "volume in creation")
